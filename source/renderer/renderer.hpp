@@ -13,6 +13,7 @@
 #include "tasks/draw_scene_task.hpp"
 #include "tasks/draw_imgui_task.hpp"
 #include "tasks/fill_buffers_task.hpp"
+#include "tasks/draw_debug_ligts.hpp"
 
 struct Renderer
 {

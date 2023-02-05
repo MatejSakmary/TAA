@@ -2,7 +2,7 @@
 
 #include <stack>
 #include <string>
-#include <set>
+#include <unordered_map>
 
 void Scene::process_mesh(const ProcessMeshInfo & info)
 {
@@ -52,12 +52,13 @@ void Scene::process_scene(const aiScene * scene)
                 {mat.a4, mat.b4, mat.c4, mat.d4}};
     };
 
-    std::set<size_t> light_names;
+    // light name hash + it's index
+    std::unordered_map<size_t, u32> lights;
 
     std::hash<std::string_view> hasher;
     for(int i = 0; i < scene->mNumLights; i++)
     {
-        light_names.emplace(hasher(std::string_view(scene->mLights[i]->mName.data, scene->mLights[i]->mName.length)));
+        lights.emplace(hasher(std::string_view(scene->mLights[i]->mName.data, scene->mLights[i]->mName.length)), i);
     }
 
     using node_element = std::tuple<const aiNode *, aiMatrix4x4>; 
@@ -70,9 +71,11 @@ void Scene::process_scene(const aiScene * scene)
         auto [node, parent_transform] = node_stack.top();
         auto node_transform = parent_transform * node->mTransformation;
 
-        if(light_names.contains(hasher(std::string_view(node->mName.data, node->mName.length))))
+        if(auto light_id = lights.find(hasher(std::string_view(node->mName.data, node->mName.length))); light_id != lights.end())
         {
+            const auto & light = scene->mLights[(*light_id).second];
             auto & new_scene_light = scene_lights.emplace_back(SceneLight{
+                .position = f32vec4{light->mPosition.x, light->mPosition.y, light->mPosition.z, 1.0f},
                 .transform = mat_assimp_to_glm(node_transform)
             });
         }

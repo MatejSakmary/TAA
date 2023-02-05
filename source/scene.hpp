@@ -32,6 +32,7 @@ struct SceneObject
 
 struct SceneLight
 {
+    f32vec4 position;
     f32mat4x4 transform;
 };
 

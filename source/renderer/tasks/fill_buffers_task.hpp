@@ -24,6 +24,10 @@ inline void task_fill_buffers(RendererContext & context)
             {
                 context.main_task_list.buffers.t_scene_indices,
                 daxa::TaskBufferAccess::HOST_TRANSFER_WRITE,
+            },
+            {
+                context.main_task_list.buffers.t_scene_lights,
+                daxa::TaskBufferAccess::HOST_TRANSFER_WRITE,
             }
         },
         .task = [&](daxa::TaskRuntime const & runtime)
@@ -90,12 +94,28 @@ inline void task_fill_buffers(RendererContext & context)
                     .size = static_cast<u32>(sizeof(SceneGeometryIndices) * context.buffers.scene_indices.cpu_buffer.size()),
                 });
 
+                auto lights_staging_buffer = context.device.create_buffer({
+                    .memory_flags = daxa::MemoryFlagBits::HOST_ACCESS_RANDOM,
+                    .size = static_cast<u32>(sizeof(SceneLights) * context.buffers.scene_lights.cpu_buffer.size()),
+                    .debug_name = "staging_lights_buffer"
+                });
+
+                auto *lights_buffer_ptr = context.device.get_host_address_as<SceneLights>(lights_staging_buffer);
+                memcpy(lights_buffer_ptr, context.buffers.scene_lights.cpu_buffer.data(), 
+                    static_cast<u32>(sizeof(SceneLights) * context.buffers.scene_lights.cpu_buffer.size()));
+
+                cmd_list.copy_buffer_to_buffer({
+                    .src_buffer = lights_staging_buffer,
+                    .dst_buffer = context.buffers.scene_lights.gpu_buffer,
+                    .size = static_cast<u32>(sizeof(SceneLights) * context.buffers.scene_lights.cpu_buffer.size()),
+                });
+
                 cmd_list.destroy_buffer_deferred(vertices_staging_buffer);
                 cmd_list.destroy_buffer_deferred(indices_staging_buffer);
-                context.conditionals.fill_scene_geometry = static_cast<u32>(false);
+                cmd_list.destroy_buffer_deferred(lights_staging_buffer);
+                context.conditionals.fill_scene_geometry = false;
             }
             #pragma endregion scene_data
-
         },
         .debug_name = "upload buffer data",
     });

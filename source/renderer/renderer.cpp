@@ -25,6 +25,7 @@ Renderer::Renderer(const AppWindow & window) :
     });
 
     context.pipelines.p_draw_scene = context.pipeline_manager.add_raster_pipeline(DRAW_SCENE_TASK_RASTER_PIPE_INFO).value();
+    context.pipelines.p_draw_debug_lights = context.pipeline_manager.add_raster_pipeline(DRAW_DEBUG_LIGTS_RASTER_PIPE_INFO).value();
 
     // TODO(msakmary) move this into create resolution dependent resources function...
     auto extent = context.swapchain.get_surface_extent();
@@ -116,8 +117,17 @@ void Renderer::create_main_task()
         }
     );
 
+    context.main_task_list.buffers.t_scene_lights = 
+        context.main_task_list.task_list.create_task_buffer(
+        {
+            .initial_access = daxa::AccessConsts::NONE,
+            .debug_name = "t_scene_lights"
+        }
+    );
+
     task_fill_buffers(context);
     task_draw_scene(context);
+    task_draw_debug_ligts(context);
     task_draw_imgui(context);
     context.main_task_list.task_list.submit({});
     context.main_task_list.task_list.present({});
@@ -193,37 +203,43 @@ void Renderer::draw(const Camera & camera)
 
 void Renderer::reload_scene_data(const Scene & scene)
 {
-    if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))
+    auto destroy_buffer_if_valid = [&]<typename T>(
+        RendererContext::Buffers::SharedBuffer<T> & buffer,
+        const daxa::TaskBufferId task_buffer) -> void
     {
-        context.main_task_list.task_list.remove_runtime_buffer(
-            context.main_task_list.buffers.t_scene_vertices,
-            context.buffers.scene_vertices.gpu_buffer);
+        if(context.device.is_id_valid(buffer.gpu_buffer))
+        {
+            context.main_task_list.task_list.remove_runtime_buffer(task_buffer, buffer.gpu_buffer);
+            context.device.destroy_buffer(buffer.gpu_buffer);
+            buffer.cpu_buffer.clear();
+        }
+    };
 
-        context.device.destroy_buffer(context.buffers.scene_vertices.gpu_buffer);
-        context.buffers.scene_vertices.cpu_buffer.clear();
-    }
-    if(context.device.is_id_valid(context.buffers.scene_indices.gpu_buffer))
-    {
-        context.main_task_list.task_list.remove_runtime_buffer(
-            context.main_task_list.buffers.t_scene_indices,
-            context.buffers.scene_indices.gpu_buffer);
-
-        context.device.destroy_buffer(context.buffers.scene_indices.gpu_buffer);
-        context.buffers.scene_indices.cpu_buffer.clear();
-    }
+    destroy_buffer_if_valid(context.buffers.scene_vertices, context.main_task_list.buffers.t_scene_vertices);
+    destroy_buffer_if_valid(context.buffers.scene_indices, context.main_task_list.buffers.t_scene_indices);
+    destroy_buffer_if_valid(context.buffers.scene_lights, context.main_task_list.buffers.t_scene_lights);
 
     context.render_info.objects.clear();
     size_t scene_vertex_cnt = 0;
     size_t scene_index_cnt = 0;
+
+    for(const auto & scene_light : scene.scene_lights)
+    {
+        f32vec4 light_position = scene_light.transform * scene_light.position;
+        context.buffers.scene_lights.cpu_buffer.push_back(SceneLights{
+            .position = daxa_vec4_from_glm(light_position)
+        });
+    }
+
     // pack scene vertices and scene indices into their separate GPU buffers
-    for(const auto& scene_runtime_object : scene.scene_objects)
+    for(const auto & scene_object : scene.scene_objects)
     {
         context.render_info.objects.push_back({
-            .model_transform = scene_runtime_object.transform,
+            .model_transform = scene_object.transform,
         });
         auto & object = context.render_info.objects.back();
 
-        for(auto scene_runtime_mesh : scene_runtime_object.meshes)
+        for(auto scene_runtime_mesh : scene_object.meshes)
         {
             object.meshes.push_back({
                 .index_buffer_offset = static_cast<u32>(scene_index_cnt),
@@ -256,7 +272,6 @@ void Renderer::reload_scene_data(const Scene & scene)
         context.main_task_list.buffers.t_scene_vertices,
         context.buffers.scene_vertices.gpu_buffer);
 
-
     context.buffers.scene_indices.gpu_buffer = context.device.create_buffer({
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
         .size = static_cast<u32>(scene_index_cnt * sizeof(SceneGeometryIndices)),
@@ -266,6 +281,15 @@ void Renderer::reload_scene_data(const Scene & scene)
     context.main_task_list.task_list.add_runtime_buffer(
         context.main_task_list.buffers.t_scene_indices,
         context.buffers.scene_indices.gpu_buffer);
+
+    context.buffers.scene_lights.gpu_buffer = context.device.create_buffer({
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .size = static_cast<u32>(context.buffers.scene_lights.cpu_buffer.size() * sizeof(SceneLights))
+    });
+
+    context.main_task_list.task_list.add_runtime_buffer(
+        context.main_task_list.buffers.t_scene_lights,
+        context.buffers.scene_lights.gpu_buffer);
 
     context.conditionals.fill_scene_geometry = static_cast<u32>(true);
     DEBUG_OUT("[Renderer::reload_scene_data()] scene reload successfull");
@@ -281,6 +305,10 @@ Renderer::~Renderer()
     if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))
     {
         context.device.destroy_buffer(context.buffers.scene_vertices.gpu_buffer);
+    }
+    if(context.device.is_id_valid(context.buffers.scene_lights.gpu_buffer))
+    {
+        context.device.destroy_buffer(context.buffers.scene_lights.gpu_buffer);
     }
     if(context.device.is_id_valid(context.buffers.scene_indices.gpu_buffer))
     {

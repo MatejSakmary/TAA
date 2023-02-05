@@ -24,6 +24,7 @@ struct RendererContext
         SharedBuffer<TransformData> transforms_buffer;
         SharedBuffer<std::vector<SceneGeometryVertices>> scene_vertices;
         SharedBuffer<std::vector<SceneGeometryIndices>> scene_indices;
+        SharedBuffer<std::vector<SceneLights>> scene_lights;
     };
 
     struct MainTaskList
@@ -40,6 +41,7 @@ struct RendererContext
 
             daxa::TaskBufferId t_scene_vertices;
             daxa::TaskBufferId t_scene_indices;
+            daxa::TaskBufferId t_scene_lights;
         };
 
         daxa::TaskList task_list;
@@ -50,6 +52,7 @@ struct RendererContext
     struct Pipelines
     {
         std::shared_ptr<daxa::RasterPipeline> p_draw_scene;
+        std::shared_ptr<daxa::RasterPipeline> p_draw_debug_lights;
     };
 
     struct Conditionals
