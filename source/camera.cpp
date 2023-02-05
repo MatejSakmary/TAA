@@ -3,7 +3,7 @@
 Camera::Camera(const CameraInfo & info) : 
     position{info.position}, front{info.front}, up{info.up}, aspect_ratio{info.aspect_ratio}, fov{info.fov},
     speed{10.0f}, pitch{0.0f}, yaw{-90.0f}, sensitivity{0.08f}, 
-    roll_sensitivity{20.0f}, roll{0.0f}
+    roll_sensitivity{20.0f}, roll{0.0f}, jitter_idx{0u}
 {
 }
 
@@ -60,9 +60,35 @@ void Camera::update_front_vector(f32 x_offset, f32 y_offset)
     front = front_;
 }
 
-auto Camera::get_view_matrix() const -> f32mat4x4
+auto Camera::get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2
 {
-    return glm::lookAt(position, position + front, up);
+    f32vec2 jitter_scale = f32vec2(1.0f/f32(swapchain_extent.x), 1.0f/f32(swapchain_extent.y));
+    f32 g = 1.32471795724474602596f;
+    f32 a1 = 1.0f / g;
+    f32 a2 = 1.0f / (g * g);
+
+    f32 tmp = glm::mod(0.5f + a1 * (jitter_idx + 1.0f), 1.0f) - 0.5f;
+    f32vec2 jitter = f32vec2(
+        glm::mod(0.5f + a1 * (jitter_idx + 1.0f), 1.0f) - 0.5f,
+        glm::mod(0.5f + a2 * (jitter_idx + 1.0f), 1.0f) - 0.5f
+    );
+    jitter = jitter * jitter_scale;
+    jitter_idx = (jitter_idx + 1) % 8; 
+    return jitter;
+}
+
+auto Camera::get_view_projection_matrix(const GetViewProjectionInfo & info) -> f32mat4x4
+{
+    f32mat4x4 m_proj = glm::perspective(fov, aspect_ratio, info.near_plane, info.far_plane);
+    /* GLM is using OpenGL standard where Y coordinate of the clip coordinates is inverted */
+    m_proj[1][1] *= -1;
+
+    auto jitter = get_camera_jitter(info.swapchain_extent);
+    m_proj = glm::translate(m_proj, f32vec3(jitter, 0.0f));
+
+    auto m_view = glm::lookAt(position, position + front, up);
+    f32mat4x4 m_proj_view = m_proj * m_view;
+    return m_proj_view;
 }
 
 auto Camera::get_camera_position() const -> f32vec3

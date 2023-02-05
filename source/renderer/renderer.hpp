@@ -22,7 +22,7 @@ struct Renderer
     ~Renderer();
 
     void resize();
-    void draw(const Camera & camera);
+    void draw(Camera & camera);
     void reload_scene_data(const Scene & scene);
     void set_bvh_visualization_depth(i32 depth);
 

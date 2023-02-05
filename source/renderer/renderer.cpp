@@ -155,19 +155,18 @@ void Renderer::resize()
     context.main_task_list.task_list.add_runtime_image(context.main_task_list.images.t_depth_image, context.depth_image);
 }
 
-void Renderer::draw(const Camera & camera)
+void Renderer::draw(Camera & camera)
 {
-    // ==============  TODO(msakmary) move this somewhere where it belongs ==================
-    f32mat4x4 m_proj = glm::perspective(camera.fov, camera.aspect_ratio, 0.1f, 500.0f);
-    /* GLM is using OpenGL standard where Y coordinate of the clip coordinates is inverted */
-    m_proj[1][1] *= -1;
-    auto m_view = camera.get_view_matrix();
-    f32mat4x4 m_proj_view = m_proj * camera.get_view_matrix();
-    context.buffers.transforms_buffer.cpu_buffer =
-    {
+    auto extent = context.swapchain.get_surface_extent();
+    auto m_proj_view = camera.get_view_projection_matrix({
+        .near_plane = 0.1f,
+        .far_plane = 500.0f,
+        .swapchain_extent = {extent.x, extent.y}
+    });
+
+    context.buffers.transforms_buffer.cpu_buffer = {
         .m_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&m_proj_view)
     };
-    // ======================================================================================
 
     context.conditionals.fill_transforms = true;
 
@@ -188,8 +187,7 @@ void Renderer::draw(const Camera & camera)
     }
     context.main_task_list.task_list.execute();
 
-    auto result = context.pipeline_manager.reload_all(); // returns Result<bool>
-    // if the result has a value, it suceeded. If the value is true, it reloaded shaders
+    auto result = context.pipeline_manager.reload_all();
     if(result.is_ok()) {
         if (result.value() == true)
         {
@@ -294,7 +292,6 @@ void Renderer::reload_scene_data(const Scene & scene)
     context.conditionals.fill_scene_geometry = static_cast<u32>(true);
     DEBUG_OUT("[Renderer::reload_scene_data()] scene reload successfull");
 }
-
 
 Renderer::~Renderer()
 {
