@@ -135,7 +135,7 @@ Application::Application() :
     },
     renderer{window},
     camera {{
-        .position = {0.0, 0.0, 500.0},
+        .position = {0.0, 0.0, 5.0},
         .front = {0.0, 0.0, -1.0},
         .up = {0.0, 1.0, 0.0}, 
         .aspect_ratio = 1080.0f/720.0f,

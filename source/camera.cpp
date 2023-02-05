@@ -2,7 +2,7 @@
 
 Camera::Camera(const CameraInfo & info) : 
     position{info.position}, front{info.front}, up{info.up}, aspect_ratio{info.aspect_ratio}, fov{info.fov},
-    speed{100.0f}, pitch{0.0f}, yaw{-90.0f}, sensitivity{0.08f}, 
+    speed{10.0f}, pitch{0.0f}, yaw{-90.0f}, sensitivity{0.08f}, 
     roll_sensitivity{20.0f}, roll{0.0f}
 {
 }

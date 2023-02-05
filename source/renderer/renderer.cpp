@@ -148,7 +148,7 @@ void Renderer::resize()
 void Renderer::draw(const Camera & camera)
 {
     // ==============  TODO(msakmary) move this somewhere where it belongs ==================
-    f32mat4x4 m_proj = glm::perspective(camera.fov, camera.aspect_ratio, 0.1f, 5000.0f);
+    f32mat4x4 m_proj = glm::perspective(camera.fov, camera.aspect_ratio, 0.1f, 500.0f);
     /* GLM is using OpenGL standard where Y coordinate of the clip coordinates is inverted */
     m_proj[1][1] *= -1;
     auto m_view = camera.get_view_matrix();
@@ -216,7 +216,7 @@ void Renderer::reload_scene_data(const Scene & scene)
     size_t scene_vertex_cnt = 0;
     size_t scene_index_cnt = 0;
     // pack scene vertices and scene indices into their separate GPU buffers
-    for(const auto& scene_runtime_object : scene.runtime_scene_objects)
+    for(const auto& scene_runtime_object : scene.scene_objects)
     {
         context.render_info.objects.push_back({
             .model_transform = scene_runtime_object.transform,

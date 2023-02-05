@@ -2,6 +2,7 @@
 
 #include <stack>
 #include <string>
+#include <set>
 
 void Scene::process_mesh(const ProcessMeshInfo & info)
 {
@@ -50,6 +51,15 @@ void Scene::process_scene(const aiScene * scene)
                 {mat.a3, mat.b3, mat.c3, mat.d3},
                 {mat.a4, mat.b4, mat.c4, mat.d4}};
     };
+
+    std::set<size_t> light_names;
+
+    std::hash<std::string_view> hasher;
+    for(int i = 0; i < scene->mNumLights; i++)
+    {
+        light_names.emplace(hasher(std::string_view(scene->mLights[i]->mName.data, scene->mLights[i]->mName.length)));
+    }
+
     using node_element = std::tuple<const aiNode *, aiMatrix4x4>; 
     std::stack<node_element> node_stack;
 
@@ -58,11 +68,18 @@ void Scene::process_scene(const aiScene * scene)
     while(!node_stack.empty())
     {
         auto [node, parent_transform] = node_stack.top();
+        auto node_transform = parent_transform * node->mTransformation;
 
-        if(node->mNumMeshes > 0)
+        if(light_names.contains(hasher(std::string_view(node->mName.data, node->mName.length))))
         {
-            auto & new_scene_object = runtime_scene_objects.emplace_back(RuntimeSceneObject{
-                .transform = mat_assimp_to_glm(parent_transform)
+            auto & new_scene_light = scene_lights.emplace_back(SceneLight{
+                .transform = mat_assimp_to_glm(node_transform)
+            });
+        }
+        else if(node->mNumMeshes > 0)
+        {
+            auto & new_scene_object = scene_objects.emplace_back(SceneObject{
+                .transform = mat_assimp_to_glm(node_transform)
             });
 
             for(u32 i = 0; i < node->mNumMeshes; i++)
@@ -78,7 +95,6 @@ void Scene::process_scene(const aiScene * scene)
         for(int i = 0; i < node->mNumChildren; i++)
         {
             auto *child = node->mChildren[i];
-            auto node_transform = parent_transform * child->mTransformation;
             node_stack.push({child, node_transform});
         }
     }

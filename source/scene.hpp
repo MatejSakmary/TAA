@@ -24,24 +24,28 @@ struct RuntimeMesh
 };
 
 // Scene object used in real time visualisation
-struct RuntimeSceneObject
+struct SceneObject
 {
     f32mat4x4 transform;
     std::vector<RuntimeMesh> meshes;
+};
+
+struct SceneLight
+{
+    f32mat4x4 transform;
 };
 
 struct ProcessMeshInfo
 {
     const aiMesh * mesh;
     const aiScene * scene;
-    RuntimeSceneObject & object;
+    SceneObject & object;
 };
 
 struct Scene
 {
-    f32vec3 light_position;
-
-    std::vector<RuntimeSceneObject> runtime_scene_objects;
+    std::vector<SceneObject> scene_objects;
+    std::vector<SceneLight> scene_lights;
 
     explicit Scene(const std::string & scene_path);
 
