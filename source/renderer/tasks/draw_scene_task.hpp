@@ -8,7 +8,7 @@
 
 #include "../../types.hpp"
 #include "../renderer_context.hpp"
-#include "../shared/draw_scene_shared.inl"
+#include "../shared/shared.inl"
 
 inline static const daxa::RasterPipelineCompileInfo DRAW_SCENE_TASK_RASTER_PIPE_INFO 
 {
@@ -33,9 +33,6 @@ inline static const daxa::RasterPipelineCompileInfo DRAW_SCENE_TASK_RASTER_PIPE_
         .depth_attachment_format = daxa::Format::D32_SFLOAT,
         .enable_depth_test = true,
         .enable_depth_write = true,
-        // .depth_test_compare_op = daxa::CompareOp::GREATER_OR_EQUAL,
-        // .min_depth_bounds = 1.0f,
-        // .max_depth_bounds = 0.0f,
     },
     .raster = {
         .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_LIST,
@@ -66,8 +63,8 @@ inline void task_draw_scene(RendererContext & context)
         .used_images =
         {
             { 
-                context.main_task_list.images.t_swapchain_image,
-                daxa::TaskImageAccess::SHADER_WRITE_ONLY,
+                context.main_task_list.images.t_backbuffer_image,
+                daxa::TaskImageAccess::FRAGMENT_SHADER_WRITE_ONLY,
                 daxa::ImageMipArraySlice{} 
             },
             { 
@@ -80,7 +77,7 @@ inline void task_draw_scene(RendererContext & context)
         {
             auto cmd_list = runtime.get_command_list();
             auto dimensions = context.swapchain.get_surface_extent();
-            auto swapchain_image = runtime.get_images(context.main_task_list.images.t_swapchain_image);
+            auto backbuffer_image = runtime.get_images(context.main_task_list.images.t_backbuffer_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
             auto index_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_indices);
             auto vertex_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_vertices);
@@ -88,7 +85,7 @@ inline void task_draw_scene(RendererContext & context)
             cmd_list.begin_renderpass({
                 .color_attachments = 
                 {{
-                    .image_view = swapchain_image[0].default_view(),
+                    .image_view = backbuffer_image[0].default_view(),
                     .load_op = daxa::AttachmentLoadOp::CLEAR,
                     .clear_value = std::array<f32, 4>{0.02, 0.02, 0.02, 1.0},
                 }},

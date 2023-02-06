@@ -2,8 +2,11 @@
 
 #include <daxa/daxa.inl>
 
+
 struct TransformData
 {
+    daxa_f32mat4x4 m_prev_proj_view;
+    daxa_f32mat4x4 m_inv_proj_view;
     daxa_f32mat4x4 m_proj_view;
 };
 
@@ -40,4 +43,15 @@ struct DrawDebugLightsPC
 {
     daxa_BufferPtr(TransformData) transforms;
     daxa_BufferPtr(SceneLights) lights;
+};
+
+struct TAAPC
+{
+    daxa_BufferPtr(TransformData) transforms;
+    daxa_Image2Df32 depth_image;
+    daxa_Image2Df32 resolve_image;
+    daxa_Image2Df32 backbuffer_image;
+    daxa_u32vec2 swapchain_dimensions;
+    daxa_SamplerId nearest_sampler;
+    daxa_u32 first_frame;
 };

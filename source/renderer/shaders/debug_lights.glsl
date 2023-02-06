@@ -1,5 +1,5 @@
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
-#include <shared/draw_scene_shared.inl>
+#include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(DrawDebugLightsPC)
 daxa_BufferPtr(SceneLights) scene_lights = daxa_push_constant.lights;

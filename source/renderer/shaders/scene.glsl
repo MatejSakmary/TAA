@@ -1,5 +1,5 @@
 #define DAXA_ENABLE_SHADER_NO_NAMESPACE 1
-#include <shared/draw_scene_shared.inl>
+#include <shared/shared.inl>
 
 DAXA_USE_PUSH_CONSTANT(DrawScenePC)
 daxa_BufferPtr(SceneGeometryVertices) scene_vertices = daxa_push_constant.vertices;

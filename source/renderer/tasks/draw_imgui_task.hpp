@@ -19,9 +19,9 @@ inline void task_draw_imgui(RendererContext & context)
         {
             { 
                 context.main_task_list.images.t_swapchain_image,
-                daxa::TaskImageAccess::SHADER_WRITE_ONLY,
+                daxa::TaskImageAccess::SHADER_READ_WRITE,
                 daxa::ImageMipArraySlice{} 
-            }
+            },
         },
         .task = [&](daxa::TaskRuntime const & runtime)
         {

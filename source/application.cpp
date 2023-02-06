@@ -141,7 +141,7 @@ Application::Application() :
         .aspect_ratio = 1080.0f/720.0f,
         .fov = glm::radians(50.0f)
     }},
-    scene{"resources/scenes/cubes/cubes.fbx"}
+    scene{"resources/suzanne_scene/suzanne.fbx"}
 {
     state.file_browser.SetTitle("Select scene file");
     state.file_browser.SetTypeFilters({ ".fbx", ".obj" });

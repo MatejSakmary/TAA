@@ -7,8 +7,9 @@
 
 #include "../types.hpp"
 #include "../scene.hpp"
-#include "shared/draw_scene_shared.inl"
 #include "../external/imgui_file_dialog.hpp"
+
+#include "shared/shared.inl"
 
 struct RendererContext
 {
@@ -32,6 +33,8 @@ struct RendererContext
         struct TaskListImages
         {
             daxa::TaskImageId t_swapchain_image;
+            daxa::TaskImageId t_backbuffer_image;
+            daxa::TaskImageId t_resolve_image;
             daxa::TaskImageId t_depth_image;
         };
 
@@ -53,12 +56,14 @@ struct RendererContext
     {
         std::shared_ptr<daxa::RasterPipeline> p_draw_scene;
         std::shared_ptr<daxa::RasterPipeline> p_draw_debug_lights;
+        std::shared_ptr<daxa::RasterPipeline> p_taa_pass;
     };
 
     struct Conditionals
     {
         bool fill_transforms = true;
         bool fill_scene_geometry = false;
+        bool clear_resolve = true;
     };
 
     // TODO(msakmary) perhaps reconsider moving this to Scene?
@@ -85,7 +90,10 @@ struct RendererContext
     daxa::PipelineManager pipeline_manager;
 
     daxa::ImageId swapchain_image;
+    daxa::ImageId backbuffer_image;
+    daxa::ImageId resolve_image;
     daxa::ImageId depth_image;
+    daxa::SamplerId nearest_sampler;
 
     daxa::ImGuiRenderer imgui_renderer;
 
