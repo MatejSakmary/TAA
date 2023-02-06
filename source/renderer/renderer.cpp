@@ -71,9 +71,9 @@ Renderer::Renderer(const AppWindow & window) :
 
 
     context.nearest_sampler = context.device.create_sampler({
-        .magnification_filter = daxa::Filter::NEAREST,
-        .minification_filter = daxa::Filter::NEAREST,
-        .mipmap_filter = daxa::Filter::NEAREST});
+        .magnification_filter = daxa::Filter::LINEAR,
+        .minification_filter = daxa::Filter::LINEAR,
+        .mipmap_filter = daxa::Filter::LINEAR});
 
     context.buffers.transforms_buffer.gpu_buffer = context.device.create_buffer({
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
@@ -278,7 +278,11 @@ void Renderer::draw(Camera & camera)
         .swapchain_extent = {extent.x, extent.y}
     });
 
+    auto prev_proj_view = context.buffers.transforms_buffer.cpu_buffer.m_proj_view;
+    auto inv_proj_view = glm::inverse(m_proj_view);
     context.buffers.transforms_buffer.cpu_buffer = {
+        .m_prev_proj_view = prev_proj_view,
+        .m_inv_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&inv_proj_view),
         .m_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&m_proj_view)
     };
 

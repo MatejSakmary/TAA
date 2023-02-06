@@ -25,10 +25,25 @@ layout (location = 0) out f32vec4 out_color;
 void main()
 {
     f32vec4 backbuffer_color = texture( daxa_push_constant.backbuffer_image, daxa_push_constant.nearest_sampler, in_uv);
-    f32vec4 resolve_color = texture( daxa_push_constant.resolve_image, daxa_push_constant.nearest_sampler, in_uv);
-    f32 depth = texture( daxa_push_constant.depth_image, daxa_push_constant.nearest_sampler, in_uv).r;
-    f32 accum_factor = max(0.2, f32(daxa_push_constant.first_frame));
-    out_color = backbuffer_color * accum_factor + resolve_color * (1 - accum_factor);
 
+    f32 depth = texture( daxa_push_constant.depth_image, daxa_push_constant.nearest_sampler, in_uv).r;
+    f32vec4 clip_space = f32vec4(in_uv * f32vec2(2.0) - f32vec2(1.0), depth, 1.0);
+    f32vec4 reproj_pos = deref(camera_transforms).m_inv_proj_view * clip_space;
+    f32vec3 world_pos = reproj_pos.xyz / reproj_pos.w;
+    f32vec4 proj_world_pos = deref(camera_transforms).m_prev_proj_view * f32vec4(world_pos, 1.0);
+    f32vec2 proj_screen_space = proj_world_pos.xy / proj_world_pos.w;
+    f32vec2 proj_uv = (proj_screen_space + 1.0f) * 0.5f;
+
+    f32vec4 resolve_color = texture( daxa_push_constant.resolve_image, daxa_push_constant.nearest_sampler, proj_uv);
+    // f32vec4 resolve_color = texture( daxa_push_constant.resolve_image, daxa_push_constant.nearest_sampler, in_uv);
+
+    f32 accum_factor = max(0.1, f32(daxa_push_constant.first_frame));
+    if(proj_uv.x < 0.0 || proj_uv.x > 1.0 || proj_uv.y < 0.0 || proj_uv.y > 1.0)
+    {
+        accum_factor = 1.0;
+    }
+    // accum_factor = 1.0;
+    out_color = backbuffer_color * accum_factor + resolve_color * (1 - accum_factor);
+    // out_color = f32vec4(clip_space.xy, 0.0, 1.0);
 }
 #endif

@@ -63,7 +63,7 @@ void Camera::update_front_vector(f32 x_offset, f32 y_offset)
 // source - http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
 auto Camera::get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2
 {
-    f32vec2 jitter_scale = f32vec2(2.0f/f32(swapchain_extent.x), 2.0f/f32(swapchain_extent.y));
+    f32vec2 jitter_scale = f32vec2(1.0f/f32(swapchain_extent.x), 1.0f/f32(swapchain_extent.y));
     f32 g = 1.32471795724474602596f;
     f32 a1 = 1.0f / g;
     f32 a2 = 1.0f / (g * g);
@@ -74,7 +74,7 @@ auto Camera::get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2
         glm::mod(0.5f + a2 * (jitter_idx + 1.0f), 1.0f) - 0.5f
     );
     jitter = jitter * jitter_scale;
-    jitter_idx = (jitter_idx + 1) % 8; 
+    jitter_idx = (jitter_idx + 1) % 32; 
     return jitter;
 }
 

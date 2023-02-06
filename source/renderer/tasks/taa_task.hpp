@@ -79,6 +79,7 @@ inline void task_taa_pass(RendererContext & context)
             auto resolve_image = runtime.get_images(context.main_task_list.images.t_resolve_image);
             auto backbuffer_image = runtime.get_images(context.main_task_list.images.t_backbuffer_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
+            auto transforms_buffer = runtime.get_buffers(context.main_task_list.buffers.t_transform_data);
 
             cmd_list.begin_renderpass({
                 .color_attachments =
@@ -93,6 +94,7 @@ inline void task_taa_pass(RendererContext & context)
             });
             cmd_list.set_pipeline(*context.pipelines.p_taa_pass);
             cmd_list.push_constant(TAAPC{
+                .transforms = context.device.get_device_address(transforms_buffer[0]),
                 .depth_image = depth_image[0].default_view(),
                 .resolve_image = resolve_image[0].default_view(),
                 .backbuffer_image = backbuffer_image[0].default_view(),
