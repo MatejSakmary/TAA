@@ -28,52 +28,14 @@ Renderer::Renderer(const AppWindow & window) :
         .debug_name = "Pipeline Compiler",
     });
 
-    context.pipelines.p_draw_scene = context.pipeline_manager.add_raster_pipeline(DRAW_SCENE_TASK_RASTER_PIPE_INFO).value();
-    context.pipelines.p_draw_debug_lights = context.pipeline_manager.add_raster_pipeline(DRAW_DEBUG_LIGTS_RASTER_PIPE_INFO).value();
-    context.pipelines.p_taa_pass = context.pipeline_manager.add_raster_pipeline(RASTER_TAA_PASS_PIPE_INFO).value();
+    context.linear_sampler = context.device.create_sampler({});
+    context.offscreen_format = daxa::Format::R16G16B16A16_SFLOAT;
+    create_resolution_dependent_resources();
 
-    // TODO(msakmary) move this into create resolution dependent resources function...
-    auto extent = context.swapchain.get_surface_extent();
-    context.depth_image = context.device.create_image({
-        .format = daxa::Format::D32_SFLOAT,
-        .aspect = daxa::ImageAspectFlagBits::DEPTH,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "depth image"
-    });
-
-    context.resolve_image = context.device.create_image({
-        .format = context.swapchain.get_format(),
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::TRANSFER_DST |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "resolve image"
-    });
-
-    context.backbuffer_image = context.device.create_image({
-        .format = context.swapchain.get_format(),
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::TRANSFER_DST |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "backbuffer image"
-    });
-
-
-    context.nearest_sampler = context.device.create_sampler({
-        .magnification_filter = daxa::Filter::LINEAR,
-        .minification_filter = daxa::Filter::LINEAR,
-        .mipmap_filter = daxa::Filter::LINEAR});
+    context.pipelines.p_draw_scene = context.pipeline_manager.add_raster_pipeline(get_draw_scene_pipeline(context)).value();
+    context.pipelines.p_draw_debug_lights = context.pipeline_manager.add_raster_pipeline(get_draw_debug_lights_pipeline(context)).value();
+    context.pipelines.p_taa_pass = context.pipeline_manager.add_compute_pipeline(get_taa_pass_pipeline(context)).value();
+    context.pipelines.p_tonemap_pass = context.pipeline_manager.add_raster_pipeline(get_tonemap_pass_pipeline(context)).value();
 
     context.buffers.transforms_buffer.gpu_buffer = context.device.create_buffer({
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
@@ -90,6 +52,92 @@ Renderer::Renderer(const AppWindow & window) :
         .format = context.swapchain.get_format(),
     });
     create_main_task();
+}
+
+void Renderer::create_resolution_dependent_resources()
+{
+    auto extent = context.swapchain.get_surface_extent();
+
+    if(context.device.is_id_valid((context.velocity_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_velocity_image, context.velocity_image);
+        context.device.destroy_image(context.velocity_image);
+    }
+
+    if(context.device.is_id_valid((context.main_task_list.accumulation_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_accumulation_image, context.main_task_list.accumulation_image);
+        context.device.destroy_image(context.main_task_list.accumulation_image);
+    }
+
+    if(context.device.is_id_valid((context.main_task_list.offscreen_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_offscreen_image, context.main_task_list.offscreen_image);
+        context.device.destroy_image(context.main_task_list.offscreen_image);
+    }
+
+    if(context.device.is_id_valid((context.depth_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_depth_image, context.depth_image);
+        context.device.destroy_image(context.depth_image);
+    }
+
+    context.depth_image = context.device.create_image({
+        .format = daxa::Format::D32_SFLOAT,
+        .aspect = daxa::ImageAspectFlagBits::DEPTH,
+        .size   = {extent.x, extent.y, 1},
+        .usage  = 
+            daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT |
+            daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name   = "depth image"
+    });
+
+    context.velocity_image = context.device.create_image({
+        .format = context.offscreen_format,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {extent.x, extent.y, 1},
+        .usage = 
+            daxa::ImageUsageFlagBits::TRANSFER_DST     |
+            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
+            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
+            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name = "velocity image"
+    });
+
+    context.offscreen_image_1 = context.device.create_image({
+        .format = context.offscreen_format,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {extent.x, extent.y, 1},
+        .usage = 
+            daxa::ImageUsageFlagBits::TRANSFER_DST     |
+            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
+            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
+            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name = "offscreen image 1"
+    });
+
+    context.offscreen_image_2 = context.device.create_image({
+        .format = context.offscreen_format,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {extent.x, extent.y, 1},
+        .usage = 
+            daxa::ImageUsageFlagBits::TRANSFER_DST     |
+            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
+            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
+            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name = "offscreen image 2"
+    });
+
+    context.main_task_list.offscreen_image = context.offscreen_image_1;
+    context.main_task_list.accumulation_image = context.offscreen_image_2;
 }
 
 void Renderer::create_main_task()
@@ -112,33 +160,46 @@ void Renderer::create_main_task()
         }
     );
 
-    context.main_task_list.images.t_backbuffer_image = 
+    context.main_task_list.images.t_velocity_image = 
         context.main_task_list.task_list.create_task_image(
         {
             .initial_access = daxa::AccessConsts::NONE,
             .initial_layout = daxa::ImageLayout::UNDEFINED,
             .swapchain_image = false,
-            .debug_name = "t_backbuffer_image"
+            .debug_name = "t_velocity_image"
         }
     );
-
     context.main_task_list.task_list.add_runtime_image(
-        context.main_task_list.images.t_backbuffer_image,
-        context.backbuffer_image);
+        context.main_task_list.images.t_velocity_image,
+        context.velocity_image);
 
-    context.main_task_list.images.t_resolve_image = 
+    context.main_task_list.images.t_offscreen_image = 
         context.main_task_list.task_list.create_task_image(
         {
-            .initial_access = daxa::AccessConsts::BLIT_WRITE,
-            .initial_layout = daxa::ImageLayout::TRANSFER_DST_OPTIMAL,
+            .initial_access = daxa::AccessConsts::NONE,
+            .initial_layout = daxa::ImageLayout::UNDEFINED,
             .swapchain_image = false,
-            .debug_name = "t_resolve_image"
+            .debug_name = "t_offscreen_image"
         }
     );
-
     context.main_task_list.task_list.add_runtime_image(
-        context.main_task_list.images.t_resolve_image,
-        context.resolve_image);
+        context.main_task_list.images.t_offscreen_image,
+        context.main_task_list.offscreen_image);
+
+
+    context.main_task_list.images.t_accumulation_image = 
+        context.main_task_list.task_list.create_task_image(
+        {
+            .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+            .initial_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .swapchain_image = false,
+            .debug_name = "t_accumulation_image"
+        }
+    );
+    context.main_task_list.task_list.add_runtime_image(
+            context.main_task_list.images.t_accumulation_image,
+            context.main_task_list.accumulation_image);
+
 
     context.main_task_list.images.t_depth_image = 
         context.main_task_list.task_list.create_task_image(
@@ -192,11 +253,11 @@ void Renderer::create_main_task()
     );
 
     task_fill_buffers(context);
-    task_init_resolve(context);
+    task_init_accumulation_image(context);
     task_draw_scene(context);
     task_draw_debug_ligts(context);
     task_taa_pass(context);
-    task_blit_swapchain_to_resolve(context);
+    task_tonemap_pass(context);
     task_draw_imgui(context);
     context.main_task_list.task_list.submit({});
     context.main_task_list.task_list.present({});
@@ -206,67 +267,46 @@ void Renderer::create_main_task()
 void Renderer::resize()
 {
     context.swapchain.resize();
-    std::cout << "resizing" << std::endl;
-    // TODO(msakmary) move this into create resolution dependent resources function...
-    if(context.device.is_id_valid((context.resolve_image)))
-    {
-        context.main_task_list.task_list.remove_runtime_image(
-            context.main_task_list.images.t_resolve_image, context.resolve_image);
-        context.device.destroy_image(context.resolve_image);
-    }
-    if(context.device.is_id_valid((context.depth_image)))
-    {
-        context.main_task_list.task_list.remove_runtime_image(
-            context.main_task_list.images.t_depth_image, context.depth_image);
-        context.device.destroy_image(context.depth_image);
-    }
+    create_resolution_dependent_resources();
 
-    if(context.device.is_id_valid((context.backbuffer_image)))
-    {
-        context.main_task_list.task_list.remove_runtime_image(
-            context.main_task_list.images.t_backbuffer_image, context.backbuffer_image);
-        context.device.destroy_image(context.backbuffer_image);
-    }
+    context.conditionals.clear_accumulation = true;
 
-    auto extent = context.swapchain.get_surface_extent();
-    context.depth_image = context.device.create_image({
-        .format = daxa::Format::D32_SFLOAT,
-        .aspect = daxa::ImageAspectFlagBits::DEPTH,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::DEPTH_STENCIL_ATTACHMENT |
-            daxa::ImageUsageFlagBits::TRANSFER_DST |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "depth image"
-    });
-    context.resolve_image = context.device.create_image({
-        .format = context.swapchain.get_format(),
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "resolve image"
-    });
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_velocity_image,
+        context.velocity_image);
 
-    context.backbuffer_image = context.device.create_image({
-        .format = context.swapchain.get_format(),
-        .aspect = daxa::ImageAspectFlagBits::COLOR,
-        .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::TRANSFER_DST,
-        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "backbuffer image"
-    });
-    context.conditionals.clear_resolve = true;
-    context.main_task_list.task_list.add_runtime_image(context.main_task_list.images.t_backbuffer_image, context.backbuffer_image);
-    context.main_task_list.task_list.add_runtime_image(context.main_task_list.images.t_resolve_image, context.resolve_image);
-    context.main_task_list.task_list.add_runtime_image(context.main_task_list.images.t_depth_image, context.depth_image);
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_offscreen_image,
+        context.main_task_list.offscreen_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+            context.main_task_list.images.t_accumulation_image,
+            context.main_task_list.accumulation_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_depth_image,
+        context.depth_image);
+}
+
+void Renderer::swap_offscreen_images()
+{
+    context.main_task_list.task_list.remove_runtime_image(
+        context.main_task_list.images.t_offscreen_image,
+        context.main_task_list.offscreen_image);
+
+    context.main_task_list.task_list.remove_runtime_image(
+        context.main_task_list.images.t_accumulation_image,
+        context.main_task_list.accumulation_image);
+
+    std::swap(context.main_task_list.offscreen_image, context.main_task_list.accumulation_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_offscreen_image,
+        context.main_task_list.offscreen_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_accumulation_image,
+        context.main_task_list.accumulation_image);
 }
 
 void Renderer::draw(Camera & camera)
@@ -278,12 +318,15 @@ void Renderer::draw(Camera & camera)
         .swapchain_extent = {extent.x, extent.y}
     });
 
-    auto prev_proj_view = context.buffers.transforms_buffer.cpu_buffer.m_proj_view;
-    auto inv_proj_view = glm::inverse(m_proj_view);
+    auto m_prev_proj_view = context.buffers.transforms_buffer.cpu_buffer.m_proj_view;
+    auto m_inv_proj_view = glm::inverse(m_proj_view);
+    auto m_jitter = camera.get_camera_jitter_matrix({extent.x, extent.y});
+
     context.buffers.transforms_buffer.cpu_buffer = {
-        .m_prev_proj_view = prev_proj_view,
-        .m_inv_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&inv_proj_view),
-        .m_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&m_proj_view)
+        .m_prev_proj_view = m_prev_proj_view,
+        .m_inv_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&m_inv_proj_view),
+        .m_proj_view = *reinterpret_cast<daxa::f32mat4x4 *>(&m_proj_view),
+        .m_jitter = *reinterpret_cast<daxa::f32mat4x4 *>(&m_jitter)
     };
 
     context.conditionals.fill_transforms = true;
@@ -304,6 +347,8 @@ void Renderer::draw(Camera & camera)
         return;
     }
     context.main_task_list.task_list.execute();
+
+    swap_offscreen_images();
 
     auto result = context.pipeline_manager.reload_all();
     if(result.is_ok()) {
@@ -416,10 +461,10 @@ Renderer::~Renderer()
     context.device.wait_idle();
     ImGui_ImplGlfw_Shutdown();
     context.device.destroy_image(context.depth_image);
-    context.device.destroy_image(context.resolve_image);
-    context.device.destroy_image(context.backbuffer_image);
+    context.device.destroy_image(context.offscreen_image_1);
+    context.device.destroy_image(context.offscreen_image_2);
     context.device.destroy_buffer(context.buffers.transforms_buffer.gpu_buffer);
-    context.device.destroy_sampler(context.nearest_sampler);
+    context.device.destroy_sampler(context.linear_sampler);
     if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))
     {
         context.device.destroy_buffer(context.buffers.scene_vertices.gpu_buffer);

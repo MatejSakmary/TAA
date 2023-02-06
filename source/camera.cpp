@@ -61,7 +61,7 @@ void Camera::update_front_vector(f32 x_offset, f32 y_offset)
 }
 
 // source - http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
-auto Camera::get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2
+auto Camera::get_camera_jitter_matrix(const f32vec2 swapchain_extent) -> f32mat4x4
 {
     f32vec2 jitter_scale = f32vec2(1.0f/f32(swapchain_extent.x), 1.0f/f32(swapchain_extent.y));
     f32 g = 1.32471795724474602596f;
@@ -75,7 +75,11 @@ auto Camera::get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2
     );
     jitter = jitter * jitter_scale;
     jitter_idx = (jitter_idx + 1) % 32; 
-    return jitter;
+    f32mat4x4 jitter_mat(1.0);
+    jitter_mat[3][0] = jitter.x;
+    jitter_mat[3][1] = jitter.y;
+
+    return jitter_mat;
 }
 
 auto Camera::get_view_projection_matrix(const GetViewProjectionInfo & info) -> f32mat4x4
@@ -83,9 +87,6 @@ auto Camera::get_view_projection_matrix(const GetViewProjectionInfo & info) -> f
     f32mat4x4 m_proj = glm::perspective(fov, aspect_ratio, info.near_plane, info.far_plane);
     /* GLM is using OpenGL standard where Y coordinate of the clip coordinates is inverted */
     m_proj[1][1] *= -1;
-
-    auto jitter = get_camera_jitter(info.swapchain_extent);
-    m_proj = glm::translate(m_proj, f32vec3(jitter, 0.0f));
 
     auto m_view = glm::lookAt(position, position + front, up);
     f32mat4x4 m_proj_view = m_proj * m_view;

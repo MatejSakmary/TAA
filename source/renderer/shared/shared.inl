@@ -8,6 +8,7 @@ struct TransformData
     daxa_f32mat4x4 m_prev_proj_view;
     daxa_f32mat4x4 m_inv_proj_view;
     daxa_f32mat4x4 m_proj_view;
+    daxa_f32mat4x4 m_jitter;
 };
 
 struct SceneLights
@@ -45,13 +46,20 @@ struct DrawDebugLightsPC
     daxa_BufferPtr(SceneLights) lights;
 };
 
+struct TonemapPC
+{
+    daxa_Image2Df32 offscreen_image;
+    daxa_SamplerId linear_sampler;
+};
+
 struct TAAPC
 {
     daxa_BufferPtr(TransformData) transforms;
-    daxa_Image2Df32 depth_image;
-    daxa_Image2Df32 resolve_image;
-    daxa_Image2Df32 backbuffer_image;
+    daxa_RWImage2Df32 depth_image;
+    daxa_RWImage2Df32 offscreen_image;
+    daxa_RWImage2Df32 velocity_image;
+    daxa_Image2Df32 accumulation_image;
+    daxa_SamplerId linear_sampler;
     daxa_u32vec2 swapchain_dimensions;
-    daxa_SamplerId nearest_sampler;
     daxa_u32 first_frame;
 };

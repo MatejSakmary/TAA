@@ -32,9 +32,10 @@ struct RendererContext
     {
         struct TaskListImages
         {
+            daxa::TaskImageId t_velocity_image;
             daxa::TaskImageId t_swapchain_image;
-            daxa::TaskImageId t_backbuffer_image;
-            daxa::TaskImageId t_resolve_image;
+            daxa::TaskImageId t_offscreen_image;
+            daxa::TaskImageId t_accumulation_image;
             daxa::TaskImageId t_depth_image;
         };
 
@@ -50,20 +51,25 @@ struct RendererContext
         daxa::TaskList task_list;
         TaskListImages images;
         TaskListBuffers buffers;
+
+        // because we swap offscreen_1 and offscreen_2 we need to keep track of which is which
+        daxa::ImageId accumulation_image;
+        daxa::ImageId offscreen_image;
     };
 
     struct Pipelines
     {
         std::shared_ptr<daxa::RasterPipeline> p_draw_scene;
         std::shared_ptr<daxa::RasterPipeline> p_draw_debug_lights;
-        std::shared_ptr<daxa::RasterPipeline> p_taa_pass;
+        std::shared_ptr<daxa::ComputePipeline> p_taa_pass;
+        std::shared_ptr<daxa::RasterPipeline> p_tonemap_pass;
     };
 
     struct Conditionals
     {
         bool fill_transforms = true;
         bool fill_scene_geometry = false;
-        bool clear_resolve = true;
+        bool clear_accumulation = true;
     };
 
     // TODO(msakmary) perhaps reconsider moving this to Scene?
@@ -90,10 +96,14 @@ struct RendererContext
     daxa::PipelineManager pipeline_manager;
 
     daxa::ImageId swapchain_image;
-    daxa::ImageId backbuffer_image;
-    daxa::ImageId resolve_image;
+    daxa::ImageId offscreen_image_1;
+    daxa::ImageId offscreen_image_2;
+    daxa::ImageId velocity_image;
     daxa::ImageId depth_image;
-    daxa::SamplerId nearest_sampler;
+
+    daxa::SamplerId linear_sampler;
+
+    daxa::Format offscreen_format;
 
     daxa::ImGuiRenderer imgui_renderer;
 

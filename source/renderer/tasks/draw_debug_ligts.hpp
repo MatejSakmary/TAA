@@ -10,37 +10,39 @@
 #include "../renderer_context.hpp"
 #include "../shared/shared.inl"
 
-inline static const daxa::RasterPipelineCompileInfo DRAW_DEBUG_LIGTS_RASTER_PIPE_INFO 
+inline auto get_draw_debug_lights_pipeline(const RendererContext & context) -> daxa::RasterPipelineCompileInfo 
 {
-    .vertex_shader_info = {
-        .source = daxa::ShaderFile{"debug_lights.glsl"},
-        .compile_options = {
-            .defines = {{"_VERTEX", ""}},
+    return {
+        .vertex_shader_info = {
+            .source = daxa::ShaderFile{"debug_lights.glsl"},
+            .compile_options = {
+                .defines = {{"_VERTEX", ""}},
+            },
         },
-    },
-    .fragment_shader_info = {
-        .source = daxa::ShaderFile{"debug_lights.glsl"},
-        .compile_options = {
-            .defines = {{"_FRAGMENT", ""}},
+        .fragment_shader_info = {
+            .source = daxa::ShaderFile{"debug_lights.glsl"},
+            .compile_options = {
+                .defines = {{"_FRAGMENT", ""}},
+            },
         },
-    },
-    .color_attachments = {
-        daxa::RenderAttachment{
-            .format = daxa::Format::B8G8R8A8_SRGB,
+        .color_attachments = {
+            daxa::RenderAttachment{
+                .format = context.offscreen_format,
+            },
         },
-    },
-    .depth_test = {
-        .depth_attachment_format = daxa::Format::D32_SFLOAT,
-        .enable_depth_test = true,
-        .enable_depth_write = true,
-    },
-    .raster = {
-        .primitive_topology = daxa::PrimitiveTopology::POINT_LIST,
-        .primitive_restart_enable = false,
-        .polygon_mode = daxa::PolygonMode::POINT
-    },
-    .push_constant_size = sizeof(DrawDebugLightsPC),
-};
+        .depth_test = {
+            .depth_attachment_format = daxa::Format::D32_SFLOAT,
+            .enable_depth_test = true,
+            .enable_depth_write = true,
+        },
+        .raster = {
+            .primitive_topology = daxa::PrimitiveTopology::POINT_LIST,
+            .primitive_restart_enable = false,
+            .polygon_mode = daxa::PolygonMode::POINT
+        },
+        .push_constant_size = sizeof(DrawDebugLightsPC),
+    };
+}
 
 inline void task_draw_debug_ligts(RendererContext & context)
 {
@@ -59,7 +61,7 @@ inline void task_draw_debug_ligts(RendererContext & context)
         .used_images =
         {
             { 
-                context.main_task_list.images.t_backbuffer_image,
+                context.main_task_list.images.t_offscreen_image,
                 daxa::TaskImageAccess::SHADER_WRITE_ONLY,
                 daxa::ImageMipArraySlice{} 
             },
@@ -74,7 +76,7 @@ inline void task_draw_debug_ligts(RendererContext & context)
             if(context.buffers.scene_lights.cpu_buffer.empty()) { return; }
             auto cmd_list = runtime.get_command_list();
             auto dimensions = context.swapchain.get_surface_extent();
-            auto backbuffer_image = runtime.get_images(context.main_task_list.images.t_backbuffer_image);
+            auto backbuffer_image = runtime.get_images(context.main_task_list.images.t_offscreen_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
             auto transforms_buffer = runtime.get_buffers(context.main_task_list.buffers.t_transform_data);
             auto lights_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_lights);

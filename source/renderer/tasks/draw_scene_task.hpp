@@ -10,37 +10,42 @@
 #include "../renderer_context.hpp"
 #include "../shared/shared.inl"
 
-inline static const daxa::RasterPipelineCompileInfo DRAW_SCENE_TASK_RASTER_PIPE_INFO 
+inline auto get_draw_scene_pipeline(const RendererContext & context) -> daxa::RasterPipelineCompileInfo
 {
-    .vertex_shader_info = {
-        .source = daxa::ShaderFile{"scene.glsl"},
-        .compile_options = {
-            .defines = {{"_VERTEX", ""}},
+    return {
+        .vertex_shader_info = {
+            .source = daxa::ShaderFile{"scene.glsl"},
+            .compile_options = {
+                .defines = {{"_VERTEX", ""}},
+            },
         },
-    },
-    .fragment_shader_info = {
-        .source = daxa::ShaderFile{"scene.glsl"},
-        .compile_options = {
-            .defines = {{"_FRAGMENT", ""}},
+        .fragment_shader_info = {
+            .source = daxa::ShaderFile{"scene.glsl"},
+            .compile_options = {
+                .defines = {{"_FRAGMENT", ""}},
+            },
         },
-    },
-    .color_attachments = {
-        daxa::RenderAttachment{
-            .format = daxa::Format::B8G8R8A8_SRGB,
+        .color_attachments = {
+            daxa::RenderAttachment{
+                .format = context.offscreen_format,
+            },
+            daxa::RenderAttachment{
+                .format = context.offscreen_format,
+            },
         },
-    },
-    .depth_test = {
-        .depth_attachment_format = daxa::Format::D32_SFLOAT,
-        .enable_depth_test = true,
-        .enable_depth_write = true,
-    },
-    .raster = {
-        .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_LIST,
-        .primitive_restart_enable = false,
-        .polygon_mode = daxa::PolygonMode::FILL
-    },
-    .push_constant_size = sizeof(DrawScenePC),
-};
+        .depth_test = {
+            .depth_attachment_format = daxa::Format::D32_SFLOAT,
+            .enable_depth_test = true,
+            .enable_depth_write = true,
+        },
+        .raster = {
+            .primitive_topology = daxa::PrimitiveTopology::TRIANGLE_LIST,
+            .primitive_restart_enable = false,
+            .polygon_mode = daxa::PolygonMode::FILL
+        },
+        .push_constant_size = sizeof(DrawScenePC),
+    };
+}
 
 inline void task_draw_scene(RendererContext & context)
 {
@@ -63,7 +68,12 @@ inline void task_draw_scene(RendererContext & context)
         .used_images =
         {
             { 
-                context.main_task_list.images.t_backbuffer_image,
+                context.main_task_list.images.t_offscreen_image,
+                daxa::TaskImageAccess::FRAGMENT_SHADER_WRITE_ONLY,
+                daxa::ImageMipArraySlice{} 
+            },
+            { 
+                context.main_task_list.images.t_velocity_image,
                 daxa::TaskImageAccess::FRAGMENT_SHADER_WRITE_ONLY,
                 daxa::ImageMipArraySlice{} 
             },
@@ -77,18 +87,29 @@ inline void task_draw_scene(RendererContext & context)
         {
             auto cmd_list = runtime.get_command_list();
             auto dimensions = context.swapchain.get_surface_extent();
-            auto backbuffer_image = runtime.get_images(context.main_task_list.images.t_backbuffer_image);
+
+            auto offscreen_image = runtime.get_images(context.main_task_list.images.t_offscreen_image);
+            auto velocity_image = runtime.get_images(context.main_task_list.images.t_velocity_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
+
             auto index_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_indices);
             auto vertex_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_vertices);
             auto transforms_buffer = runtime.get_buffers(context.main_task_list.buffers.t_transform_data);
+
             cmd_list.begin_renderpass({
                 .color_attachments = 
-                {{
-                    .image_view = backbuffer_image[0].default_view(),
-                    .load_op = daxa::AttachmentLoadOp::CLEAR,
-                    .clear_value = std::array<f32, 4>{0.02, 0.02, 0.02, 1.0},
-                }},
+                { 
+                    {
+                        .image_view = offscreen_image[0].default_view(),
+                        .load_op = daxa::AttachmentLoadOp::CLEAR,
+                        .clear_value = std::array<f32, 4>{0.02, 0.02, 0.02, 1.0},
+                    },
+                    {
+                        .image_view = velocity_image[0].default_view(),
+                        .load_op = daxa::AttachmentLoadOp::CLEAR,
+                        .clear_value = std::array<f32, 4>{0.0, 0.0, 0.0, 1.0},
+                    }
+                },
                 .depth_attachment = 
                 {{
                     .image_view = depth_image[0].default_view(),

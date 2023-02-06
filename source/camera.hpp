@@ -30,9 +30,9 @@ struct Camera
     void update_front_vector(f32 x_offset, f32 y_offset);
     [[nodiscard]] auto get_camera_position() const -> f32vec3;
     [[nodiscard]] auto get_view_projection_matrix(const GetViewProjectionInfo & info) -> f32mat4x4;
+    [[nodiscard]] auto get_camera_jitter_matrix(const f32vec2 swapchain_extent) -> f32mat4x4;
 
     private:
-        [[nodiscard]] auto get_camera_jitter(const f32vec2 swapchain_extent) -> f32vec2;
 
         f32vec3 position;
         f32vec3 front;

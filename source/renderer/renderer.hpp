@@ -10,13 +10,13 @@
 #include "../scene.hpp"
 #include "../window.hpp"
 
-#include "tasks/draw_scene_task.hpp"
-#include "tasks/draw_imgui_task.hpp"
 #include "tasks/fill_buffers_task.hpp"
+#include "tasks/init_accumulation_image.hpp"
+#include "tasks/draw_scene_task.hpp"
 #include "tasks/draw_debug_ligts.hpp"
+#include "tasks/draw_imgui_task.hpp"
 #include "tasks/taa_task.hpp"
-#include "tasks/init_resolve_image.hpp"
-#include "tasks/blit_swapchain_to_resolve.hpp"
+#include "tasks/tonemap_task.hpp"
 
 struct Renderer
 {
@@ -30,5 +30,8 @@ struct Renderer
 
     private:
         RendererContext context;
+
         void create_main_task();
+        void create_resolution_dependent_resources();
+        void swap_offscreen_images();
 };
