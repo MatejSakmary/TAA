@@ -139,7 +139,7 @@ Application::Application() :
         .front = {0.0, 0.0, -1.0},
         .up = {0.0, 1.0, 0.0}, 
         .aspect_ratio = 1080.0f/720.0f,
-        .fov = glm::radians(50.0f)
+        .fov = glm::radians(30.0f)
     }},
     scene{"resources/suzanne_scene/suzanne.fbx"}
 {

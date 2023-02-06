@@ -66,7 +66,6 @@ inline void task_taa_pass(RendererContext & context)
                 .offscreen_image = offscreen_image[0].default_view(),
                 .velocity_image = velocity_image[0].default_view(),
                 .accumulation_image = accumulation_image[0].default_view(),
-                .linear_sampler = context.linear_sampler,
                 .swapchain_dimensions = {dimensions.x, dimensions.y},
                 .first_frame = context.conditionals.clear_accumulation ? 1u : 0u
             });

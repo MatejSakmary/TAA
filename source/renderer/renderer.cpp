@@ -463,6 +463,7 @@ Renderer::~Renderer()
     context.device.destroy_image(context.depth_image);
     context.device.destroy_image(context.offscreen_image_1);
     context.device.destroy_image(context.offscreen_image_2);
+    context.device.destroy_image(context.velocity_image);
     context.device.destroy_buffer(context.buffers.transforms_buffer.gpu_buffer);
     context.device.destroy_sampler(context.linear_sampler);
     if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))
