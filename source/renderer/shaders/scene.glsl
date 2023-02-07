@@ -32,6 +32,7 @@ layout (location = 2) in f32vec4 curr_pos;
 
 layout (location = 0) out f32vec4 out_color;
 layout (location = 1) out f32vec4 out_velocity;
+layout (location = 2) out f32vec4 out_color_copy;
 
 void main()
 {
@@ -39,6 +40,7 @@ void main()
     f32vec2 curr_pos_div = f32vec2((curr_pos.xy / curr_pos.w) * 0.5 + 0.5);
     f32vec2 velocity = curr_pos_div - prev_pos_div;
     out_color = f32vec4((normal_in + 1.0) / 2.0, 1.0);
+    out_color_copy = f32vec4((normal_in + 1.0) / 2.0, 1.0);
     out_velocity = f32vec4(velocity, 0.0, 1.0);
 }
 #endif

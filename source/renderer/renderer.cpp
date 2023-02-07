@@ -7,7 +7,7 @@ Renderer::Renderer(const AppWindow & window) :
     context.swapchain = context.device.create_swapchain({ 
         .native_window = window.get_native_handle(),
         .native_window_platform = daxa::NativeWindowPlatform::XLIB_API,
-        .present_mode = daxa::PresentMode::DOUBLE_BUFFER_WAIT_FOR_VBLANK,
+        .present_mode = daxa::PresentMode::TRIPLE_BUFFER_WAIT_FOR_VBLANK,
         .image_usage = 
             daxa::ImageUsageFlagBits::TRANSFER_DST |
             daxa::ImageUsageFlagBits::TRANSFER_SRC |
@@ -30,6 +30,7 @@ Renderer::Renderer(const AppWindow & window) :
 
     context.linear_sampler = context.device.create_sampler({});
     context.offscreen_format = daxa::Format::R16G16B16A16_SFLOAT;
+    context.velocity_format = daxa::Format::R16G16_SFLOAT;
     create_resolution_dependent_resources();
 
     context.pipelines.p_draw_scene = context.pipeline_manager.add_raster_pipeline(get_draw_scene_pipeline(context)).value();
@@ -58,11 +59,18 @@ void Renderer::create_resolution_dependent_resources()
 {
     auto extent = context.swapchain.get_surface_extent();
 
-    if(context.device.is_id_valid((context.velocity_image)))
+    if(context.device.is_id_valid((context.main_task_list.prev_velocity_image)))
     {
         context.main_task_list.task_list.remove_runtime_image(
-            context.main_task_list.images.t_velocity_image, context.velocity_image);
-        context.device.destroy_image(context.velocity_image);
+            context.main_task_list.images.t_prev_velocity_image, context.main_task_list.prev_velocity_image);
+        context.device.destroy_image(context.main_task_list.prev_velocity_image);
+    }
+
+    if(context.device.is_id_valid((context.main_task_list.velocity_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_velocity_image, context.main_task_list.velocity_image);
+        context.device.destroy_image(context.main_task_list.velocity_image);
     }
 
     if(context.device.is_id_valid((context.main_task_list.accumulation_image)))
@@ -77,6 +85,13 @@ void Renderer::create_resolution_dependent_resources()
         context.main_task_list.task_list.remove_runtime_image(
             context.main_task_list.images.t_offscreen_image, context.main_task_list.offscreen_image);
         context.device.destroy_image(context.main_task_list.offscreen_image);
+    }
+
+    if(context.device.is_id_valid((context.offscreen_copy_image)))
+    {
+        context.main_task_list.task_list.remove_runtime_image(
+            context.main_task_list.images.t_offscreen_copy_image, context.offscreen_copy_image);
+        context.device.destroy_image(context.offscreen_copy_image);
     }
 
     if(context.device.is_id_valid((context.depth_image)))
@@ -97,28 +112,35 @@ void Renderer::create_resolution_dependent_resources()
         .debug_name   = "depth image"
     });
 
-    context.velocity_image = context.device.create_image({
-        .format = context.offscreen_format,
+    daxa::ImageUsageFlags attachment_usage = 
+        daxa::ImageUsageFlagBits::TRANSFER_DST     |
+        daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
+        daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
+        daxa::ImageUsageFlagBits::SHADER_READ_WRITE;
+
+    context.velocity_image_1 = context.device.create_image({
+        .format = context.velocity_format,
         .aspect = daxa::ImageAspectFlagBits::COLOR,
         .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::TRANSFER_DST     |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .usage = attachment_usage,
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
-        .debug_name = "velocity image"
+        .debug_name = "velocity image 2"
+    });
+
+    context.velocity_image_2 = context.device.create_image({
+        .format = context.velocity_format,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {extent.x, extent.y, 1},
+        .usage = attachment_usage,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name = "velocity image 1"
     });
 
     context.offscreen_image_1 = context.device.create_image({
         .format = context.offscreen_format,
         .aspect = daxa::ImageAspectFlagBits::COLOR,
         .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::TRANSFER_DST     |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .usage = attachment_usage,
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
         .debug_name = "offscreen image 1"
     });
@@ -127,17 +149,25 @@ void Renderer::create_resolution_dependent_resources()
         .format = context.offscreen_format,
         .aspect = daxa::ImageAspectFlagBits::COLOR,
         .size = {extent.x, extent.y, 1},
-        .usage = 
-            daxa::ImageUsageFlagBits::TRANSFER_DST     |
-            daxa::ImageUsageFlagBits::SHADER_READ_ONLY |
-            daxa::ImageUsageFlagBits::COLOR_ATTACHMENT |
-            daxa::ImageUsageFlagBits::SHADER_READ_WRITE,
+        .usage = attachment_usage,
         .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
         .debug_name = "offscreen image 2"
     });
 
+    context.offscreen_copy_image = context.device.create_image({
+        .format = context.offscreen_format,
+        .aspect = daxa::ImageAspectFlagBits::COLOR,
+        .size = {extent.x, extent.y, 1},
+        .usage = attachment_usage,
+        .memory_flags = daxa::MemoryFlagBits::DEDICATED_MEMORY,
+        .debug_name = "offscreen copy"
+    });
+
     context.main_task_list.offscreen_image = context.offscreen_image_1;
     context.main_task_list.accumulation_image = context.offscreen_image_2;
+
+    context.main_task_list.velocity_image = context.velocity_image_1;
+    context.main_task_list.prev_velocity_image = context.velocity_image_2;
 }
 
 void Renderer::create_main_task()
@@ -171,7 +201,20 @@ void Renderer::create_main_task()
     );
     context.main_task_list.task_list.add_runtime_image(
         context.main_task_list.images.t_velocity_image,
-        context.velocity_image);
+        context.main_task_list.velocity_image);
+
+    context.main_task_list.images.t_prev_velocity_image = 
+        context.main_task_list.task_list.create_task_image(
+        {
+            .initial_access = daxa::AccessConsts::COMPUTE_SHADER_READ,
+            .initial_layout = daxa::ImageLayout::READ_ONLY_OPTIMAL,
+            .swapchain_image = false,
+            .debug_name = "t_prev_velocity_image"
+        }
+    );
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_prev_velocity_image,
+        context.main_task_list.prev_velocity_image);
 
     context.main_task_list.images.t_offscreen_image = 
         context.main_task_list.task_list.create_task_image(
@@ -200,6 +243,20 @@ void Renderer::create_main_task()
             context.main_task_list.images.t_accumulation_image,
             context.main_task_list.accumulation_image);
 
+
+    context.main_task_list.images.t_offscreen_copy_image = 
+        context.main_task_list.task_list.create_task_image(
+        {
+            .initial_access = daxa::AccessConsts::NONE,
+            .initial_layout = daxa::ImageLayout::UNDEFINED,
+            .swapchain_image = false,
+            .debug_name = "t_offscreen_copy_image"
+        }
+    );
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_offscreen_copy_image,
+        context.offscreen_copy_image);
 
     context.main_task_list.images.t_depth_image = 
         context.main_task_list.task_list.create_task_image(
@@ -273,7 +330,11 @@ void Renderer::resize()
 
     context.main_task_list.task_list.add_runtime_image(
         context.main_task_list.images.t_velocity_image,
-        context.velocity_image);
+        context.main_task_list.velocity_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_prev_velocity_image,
+        context.main_task_list.prev_velocity_image);
 
     context.main_task_list.task_list.add_runtime_image(
         context.main_task_list.images.t_offscreen_image,
@@ -284,12 +345,36 @@ void Renderer::resize()
             context.main_task_list.accumulation_image);
 
     context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_offscreen_copy_image,
+        context.offscreen_copy_image);
+
+    context.main_task_list.task_list.add_runtime_image(
         context.main_task_list.images.t_depth_image,
         context.depth_image);
 }
 
 void Renderer::swap_offscreen_images()
 {
+    // VELOCITY
+    context.main_task_list.task_list.remove_runtime_image(
+        context.main_task_list.images.t_prev_velocity_image,
+        context.main_task_list.prev_velocity_image);
+
+    context.main_task_list.task_list.remove_runtime_image(
+        context.main_task_list.images.t_velocity_image,
+        context.main_task_list.velocity_image);
+
+    std::swap(context.main_task_list.velocity_image, context.main_task_list.prev_velocity_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_prev_velocity_image,
+        context.main_task_list.prev_velocity_image);
+
+    context.main_task_list.task_list.add_runtime_image(
+        context.main_task_list.images.t_velocity_image,
+        context.main_task_list.velocity_image);
+
+    // OFFSCREEN
     context.main_task_list.task_list.remove_runtime_image(
         context.main_task_list.images.t_offscreen_image,
         context.main_task_list.offscreen_image);
@@ -463,7 +548,9 @@ Renderer::~Renderer()
     context.device.destroy_image(context.depth_image);
     context.device.destroy_image(context.offscreen_image_1);
     context.device.destroy_image(context.offscreen_image_2);
-    context.device.destroy_image(context.velocity_image);
+    context.device.destroy_image(context.offscreen_copy_image);
+    context.device.destroy_image(context.velocity_image_1);
+    context.device.destroy_image(context.velocity_image_2);
     context.device.destroy_buffer(context.buffers.transforms_buffer.gpu_buffer);
     context.device.destroy_sampler(context.linear_sampler);
     if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))

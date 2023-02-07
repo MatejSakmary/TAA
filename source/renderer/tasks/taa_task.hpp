@@ -38,12 +38,22 @@ inline void task_taa_pass(RendererContext & context)
                 daxa::ImageMipArraySlice{}
             },
             {
+                context.main_task_list.images.t_offscreen_copy_image,
+                daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY,
+                daxa::ImageMipArraySlice{}
+            },
+            {
                 context.main_task_list.images.t_depth_image,
                 daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY,
                 daxa::ImageMipArraySlice{.image_aspect = daxa::ImageAspectFlagBits::DEPTH}
             },
             {
                 context.main_task_list.images.t_velocity_image,
+                daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY,
+                daxa::ImageMipArraySlice{}
+            },
+            {
+                context.main_task_list.images.t_prev_velocity_image,
                 daxa::TaskImageAccess::COMPUTE_SHADER_READ_ONLY,
                 daxa::ImageMipArraySlice{}
             },
@@ -55,17 +65,21 @@ inline void task_taa_pass(RendererContext & context)
 
             auto accumulation_image = runtime.get_images(context.main_task_list.images.t_accumulation_image);
             auto offscreen_image = runtime.get_images(context.main_task_list.images.t_offscreen_image);
+            auto offscreen_copy_image = runtime.get_images(context.main_task_list.images.t_offscreen_copy_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
             auto velocity_image = runtime.get_images(context.main_task_list.images.t_velocity_image);
+            auto prev_velocity_image = runtime.get_images(context.main_task_list.images.t_prev_velocity_image);
             auto transforms_buffer = runtime.get_buffers(context.main_task_list.buffers.t_transform_data);
 
             cmd_list.set_pipeline(*context.pipelines.p_taa_pass);
             cmd_list.push_constant(TAAPC{
                 .transforms = context.device.get_device_address(transforms_buffer[0]),
-                .depth_image = depth_image[0].default_view(),
-                .offscreen_image = offscreen_image[0].default_view(),
-                .velocity_image = velocity_image[0].default_view(),
-                .accumulation_image = accumulation_image[0].default_view(),
+                .depth_image          = depth_image[0].default_view(),
+                .offscreen_image      = offscreen_image[0].default_view(),
+                .offscreen_copy_image = offscreen_copy_image[0].default_view(),
+                .velocity_image       = velocity_image[0].default_view(),
+                .prev_velocity_image  = prev_velocity_image[0].default_view(),
+                .accumulation_image   = accumulation_image[0].default_view(),
                 .swapchain_dimensions = {dimensions.x, dimensions.y},
                 .first_frame = context.conditionals.clear_accumulation ? 1u : 0u
             });

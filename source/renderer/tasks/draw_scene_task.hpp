@@ -26,12 +26,9 @@ inline auto get_draw_scene_pipeline(const RendererContext & context) -> daxa::Ra
             },
         },
         .color_attachments = {
-            daxa::RenderAttachment{
-                .format = context.offscreen_format,
-            },
-            daxa::RenderAttachment{
-                .format = context.offscreen_format,
-            },
+            daxa::RenderAttachment{ .format = context.offscreen_format, }, // Offscreen image
+            daxa::RenderAttachment{ .format = context.velocity_format,  },  // Velocity image
+            daxa::RenderAttachment{ .format = context.offscreen_format, }, // Offscreen copy image
         },
         .depth_test = {
             .depth_attachment_format = daxa::Format::D32_SFLOAT,
@@ -78,6 +75,11 @@ inline void task_draw_scene(RendererContext & context)
                 daxa::ImageMipArraySlice{} 
             },
             { 
+                context.main_task_list.images.t_offscreen_copy_image,
+                daxa::TaskImageAccess::FRAGMENT_SHADER_WRITE_ONLY,
+                daxa::ImageMipArraySlice{} 
+            },
+            { 
                 context.main_task_list.images.t_depth_image,
                 daxa::TaskImageAccess::DEPTH_ATTACHMENT,
                 daxa::ImageMipArraySlice{.image_aspect = daxa::ImageAspectFlagBits::DEPTH} 
@@ -89,6 +91,7 @@ inline void task_draw_scene(RendererContext & context)
             auto dimensions = context.swapchain.get_surface_extent();
 
             auto offscreen_image = runtime.get_images(context.main_task_list.images.t_offscreen_image);
+            auto offscreen_copy_image = runtime.get_images(context.main_task_list.images.t_offscreen_copy_image);
             auto velocity_image = runtime.get_images(context.main_task_list.images.t_velocity_image);
             auto depth_image = runtime.get_images(context.main_task_list.images.t_depth_image);
 
@@ -108,6 +111,11 @@ inline void task_draw_scene(RendererContext & context)
                         .image_view = velocity_image[0].default_view(),
                         .load_op = daxa::AttachmentLoadOp::CLEAR,
                         .clear_value = std::array<f32, 4>{0.0, 0.0, 0.0, 1.0},
+                    },
+                    {
+                        .image_view = offscreen_copy_image[0].default_view(),
+                        .load_op = daxa::AttachmentLoadOp::CLEAR,
+                        .clear_value = std::array<f32, 4>{0.02, 0.02, 0.02, 1.0},
                     }
                 },
                 .depth_attachment = 

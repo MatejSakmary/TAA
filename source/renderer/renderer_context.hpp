@@ -33,8 +33,10 @@ struct RendererContext
         struct TaskListImages
         {
             daxa::TaskImageId t_velocity_image;
+            daxa::TaskImageId t_prev_velocity_image;
             daxa::TaskImageId t_swapchain_image;
             daxa::TaskImageId t_offscreen_image;
+            daxa::TaskImageId t_offscreen_copy_image;
             daxa::TaskImageId t_accumulation_image;
             daxa::TaskImageId t_depth_image;
         };
@@ -55,6 +57,9 @@ struct RendererContext
         // because we swap offscreen_1 and offscreen_2 we need to keep track of which is which
         daxa::ImageId accumulation_image;
         daxa::ImageId offscreen_image;
+
+        daxa::ImageId prev_velocity_image;
+        daxa::ImageId velocity_image;
     };
 
     struct Pipelines
@@ -98,12 +103,15 @@ struct RendererContext
     daxa::ImageId swapchain_image;
     daxa::ImageId offscreen_image_1;
     daxa::ImageId offscreen_image_2;
-    daxa::ImageId velocity_image;
+    daxa::ImageId offscreen_copy_image;
+    daxa::ImageId velocity_image_1;
+    daxa::ImageId velocity_image_2;
     daxa::ImageId depth_image;
 
     daxa::SamplerId linear_sampler;
 
     daxa::Format offscreen_format;
+    daxa::Format velocity_format;
 
     daxa::ImGuiRenderer imgui_renderer;
 
