@@ -1,5 +1,6 @@
 #include "application.hpp"
 #include <bit>
+#include <imgui_stdlib.h>
 
 #include "utils.hpp"
 
@@ -119,6 +120,8 @@ void Application::ui_update()
     ImGui::Checkbox("Reject velocity", &state.current.reject_velocity);
     if(!state.current.reproject_velocity) {ImGui::EndDisabled(); }
 
+    ImGui::Text((std::string("Scene draw time took : ") + std::to_string(renderer.draw_time) + std::string(" ns")).c_str());
+    ImGui::Text((std::string("TAA time took : ") + std::to_string(renderer.taa_time) + std::string(" ns")).c_str());
 
     ImGui::End();
 

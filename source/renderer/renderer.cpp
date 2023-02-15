@@ -29,6 +29,11 @@ Renderer::Renderer(const AppWindow & window) :
         .debug_name = "Pipeline Compiler",
     });
 
+    context.timestamps = context.device.create_timeline_query_pool({
+        .query_count = 4,
+        .debug_name = "timeline_query",
+    });
+
     context.linear_sampler = context.device.create_sampler({});
     context.nearest_sampler = context.device.create_sampler({
         .magnification_filter = daxa::Filter::NEAREST,
@@ -451,6 +456,15 @@ void Renderer::draw(Camera & camera)
         DEBUG_OUT(result.to_string());
     }
 
+    auto query_results = context.timestamps.get_query_results(0, 4);
+    if ((query_results[1] != 0u) && (query_results[3] != 0u))
+    {
+        draw_time = static_cast<f64>(query_results[2] - query_results[0]) / 1000.0;
+    }
+    if ((query_results[5] != 0u) && (query_results[7] != 0u))
+    {
+        taa_time = static_cast<f64>(query_results[6] - query_results[4]) / 1000.0;
+    }
 }
 
 void Renderer::reload_taa_pipeline()

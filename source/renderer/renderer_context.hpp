@@ -124,6 +124,8 @@ struct RendererContext
 
     daxa::ImGuiRenderer imgui_renderer;
 
+    daxa::TimelineQueryPool timestamps;
+
     Buffers buffers;
     MainTaskList main_task_list;
     Pipelines pipelines;

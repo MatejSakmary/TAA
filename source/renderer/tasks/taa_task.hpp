@@ -93,7 +93,17 @@ inline void task_taa_pass(RendererContext & context)
                 .swapchain_dimensions = {dimensions.x, dimensions.y},
                 .first_frame = context.conditionals.clear_accumulation ? 1u : 0u
             });
+            cmd_list.write_timestamp({ 
+                .query_pool = context.timestamps,
+                .pipeline_stage = daxa::PipelineStageFlagBits::BOTTOM_OF_PIPE,
+                .query_index = 2
+            });
             cmd_list.dispatch(((dimensions.x + 7) / 8), ((dimensions.y + 3) / 4));
+            cmd_list.write_timestamp({ 
+                .query_pool = context.timestamps,
+                .pipeline_stage = daxa::PipelineStageFlagBits::BOTTOM_OF_PIPE,
+                .query_index = 3
+            });
             if(context.conditionals.clear_accumulation == true) { context.conditionals.clear_accumulation = false; }
         },
         .debug_name = "task taa pass"

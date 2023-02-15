@@ -101,6 +101,12 @@ inline void task_draw_scene(RendererContext & context)
             auto vertex_buffer = runtime.get_buffers(context.main_task_list.buffers.t_scene_vertices);
             auto transforms_buffer = runtime.get_buffers(context.main_task_list.buffers.t_transform_data);
 
+            cmd_list.reset_timestamps({ 
+                .query_pool = context.timestamps,
+                .start_index = 0,
+                .count = context.timestamps.info().query_count
+            });
+
             cmd_list.begin_renderpass({
                 .color_attachments = 
                 { 
@@ -133,6 +139,11 @@ inline void task_draw_scene(RendererContext & context)
 
             cmd_list.set_pipeline(*context.pipelines.p_draw_scene);
 
+            cmd_list.write_timestamp({ 
+                .query_pool = context.timestamps,
+                .pipeline_stage = daxa::PipelineStageFlagBits::BOTTOM_OF_PIPE,
+                .query_index = 0
+            });
             // NOTE(msakmary) I can't put const auto & object here since than the span constructor complains
             // and I don't know how to fig this
             for(auto & object : context.render_info.objects)
@@ -150,6 +161,12 @@ inline void task_draw_scene(RendererContext & context)
                     cmd_list.draw_indexed({ .index_count = mesh.index_count});
                 }
             }
+
+            cmd_list.write_timestamp({ 
+                .query_pool = context.timestamps,
+                .pipeline_stage = daxa::PipelineStageFlagBits::BOTTOM_OF_PIPE,
+                .query_index = 1
+            });
             cmd_list.end_renderpass();
         },
         .debug_name = "draw scene",

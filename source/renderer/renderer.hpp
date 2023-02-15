@@ -30,9 +30,10 @@ enum Define
 
 struct Renderer
 {
-
     explicit Renderer(const AppWindow & window);
     ~Renderer();
+    f64 draw_time;
+    f64 taa_time;
 
     void resize();
     void draw(Camera & camera);

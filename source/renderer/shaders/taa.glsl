@@ -17,6 +17,7 @@ void main()
     i32vec2 thread_xy = i32vec2(gl_GlobalInvocationID.xy);
     f32vec2 in_uv = f32vec2(thread_xy) / f32vec2(daxa_push_constant.swapchain_dimensions - u32vec2(1));
 
+#if defined(NEAREST_DEPTH) || defined(COLOR_CLAMP) || defined(REJECT_VELOCITY)
     f32vec4[9] neighbors;
     f32[9] gauss_weights = f32[](
         1.0/16.0, 1.0/8.0, 1.0/16.0, 
@@ -49,14 +50,18 @@ void main()
         } 
     }
 
-f32vec4 offscreen_color = neighbors[5];
+    f32vec4 offscreen_color = neighbors[5];
+#else
+    f32vec4 offscreen_color = imageLoad(daxa_push_constant.offscreen_copy_image, thread_xy);
+#endif
+
 #if defined(NEAREST_DEPTH)
     f32vec2 velocity = imageLoad(daxa_push_constant.velocity_image, depth_thread_xy).rg;
 #else
     f32vec2 velocity = imageLoad(daxa_push_constant.velocity_image, thread_xy).rg;
 #endif
 
-f32 accum_factor = max(0.1, f32(daxa_push_constant.first_frame));
+    f32 accum_factor = max(0.1, f32(daxa_push_constant.first_frame));
 
 #if defined(REPROJECT_VELOCITY)
     f32vec2 vel_shift_uv = in_uv + velocity;
