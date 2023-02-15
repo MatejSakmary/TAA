@@ -8,6 +8,16 @@
 
 struct Application 
 {
+    struct CheckboxState
+    {
+        bool jitter_camera = true;
+        bool reject_velocity = true;
+        bool reproject_velocity = true;
+        bool color_clamp = true;
+        bool nearest_depth = true;
+        bool accumulate = true;
+    };
+
     struct AppState
     {
         union KeyTable
@@ -36,6 +46,8 @@ struct Application
         ImGui::FileBrowser file_browser;
 
         KeyTable key_table;
+        CheckboxState last_frame;
+        CheckboxState current;
     };
 
     public:

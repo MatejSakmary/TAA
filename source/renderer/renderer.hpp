@@ -18,6 +18,16 @@
 #include "tasks/taa_task.hpp"
 #include "tasks/tonemap_task.hpp"
 
+enum Define
+{
+    JITTER,
+    COLOR_CLAMP,
+    REJECT_VELOCITY,
+    REPROJECT_VELOCITY,
+    NEAREST_DEPTH,
+    ACCUMULATE
+};
+
 struct Renderer
 {
 
@@ -27,6 +37,8 @@ struct Renderer
     void resize();
     void draw(Camera & camera);
     void reload_scene_data(const Scene & scene);
+    void change_shader_define(Define define, bool new_value);
+    void reload_taa_pipeline();
 
     private:
         RendererContext context;

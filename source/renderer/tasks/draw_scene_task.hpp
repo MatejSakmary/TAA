@@ -12,13 +12,15 @@
 
 inline auto get_draw_scene_pipeline(const RendererContext & context) -> daxa::RasterPipelineCompileInfo
 {
+    daxa::ShaderCompileOptions compile_options;
+    compile_options.defines.push_back({"_VERTEX", ""});
+    if(context.conditionals.jitter_camera) { compile_options.defines.push_back({"JITTER_CAMERA", ""}); }
+
     return {
         .vertex_shader_info = {
             .source = daxa::ShaderFile{"scene.glsl"},
-            .compile_options = {
-                .defines = {{"_VERTEX", ""}},
+            .compile_options = compile_options
             },
-        },
         .fragment_shader_info = {
             .source = daxa::ShaderFile{"scene.glsl"},
             .compile_options = {
@@ -27,7 +29,7 @@ inline auto get_draw_scene_pipeline(const RendererContext & context) -> daxa::Ra
         },
         .color_attachments = {
             daxa::RenderAttachment{ .format = context.offscreen_format, }, // Offscreen image
-            daxa::RenderAttachment{ .format = context.velocity_format,  },  // Velocity image
+            daxa::RenderAttachment{ .format = context.velocity_format,  }, // Velocity image
             daxa::RenderAttachment{ .format = context.offscreen_format, }, // Offscreen copy image
         },
         .depth_test = {

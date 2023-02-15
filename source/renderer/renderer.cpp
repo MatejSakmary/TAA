@@ -24,11 +24,17 @@ Renderer::Renderer(const AppWindow & window) :
                 "source/renderer",
                 "source/renderer/shaders",},
             .language = daxa::ShaderLanguage::GLSL,
+            .enable_debug_info = true
         },
         .debug_name = "Pipeline Compiler",
     });
 
     context.linear_sampler = context.device.create_sampler({});
+    context.nearest_sampler = context.device.create_sampler({
+        .magnification_filter = daxa::Filter::NEAREST,
+        .minification_filter = daxa::Filter::NEAREST,
+        .mipmap_filter = daxa::Filter::NEAREST
+    });
     context.offscreen_format = daxa::Format::R16G16B16A16_SFLOAT;
     context.velocity_format = daxa::Format::R16G16_SFLOAT;
     create_resolution_dependent_resources();
@@ -447,6 +453,33 @@ void Renderer::draw(Camera & camera)
 
 }
 
+void Renderer::reload_taa_pipeline()
+{
+    context.pipeline_manager.remove_compute_pipeline(context.pipelines.p_taa_pass);
+    context.conditionals.clear_accumulation = true;
+    context.pipelines.p_taa_pass = context.pipeline_manager.add_compute_pipeline(get_taa_pass_pipeline(context)).value();
+}
+
+void Renderer::change_shader_define(Define define, bool new_value)
+{
+    if(define == Define::JITTER)
+    {
+        context.pipeline_manager.remove_raster_pipeline(context.pipelines.p_draw_scene);
+        context.conditionals.jitter_camera = new_value;
+        context.pipelines.p_draw_scene = context.pipeline_manager.add_raster_pipeline(get_draw_scene_pipeline(context)).value();
+        return;
+    }
+
+    switch (define)
+    {
+        case Define::ACCUMULATE: { context.conditionals.accumulate = new_value; break; }
+        case Define::COLOR_CLAMP : { context.conditionals.color_clamp = new_value; break; }
+        case Define::NEAREST_DEPTH : { context.conditionals.nearest_depth = new_value; break; }
+        case Define::REJECT_VELOCITY: { context.conditionals.velocity_rejection = new_value; break; }
+        case Define::REPROJECT_VELOCITY: { context.conditionals.velocity_reproject = new_value; break; }
+    }
+}
+
 void Renderer::reload_scene_data(const Scene & scene)
 {
     auto destroy_buffer_if_valid = [&]<typename T>(
@@ -553,6 +586,7 @@ Renderer::~Renderer()
     context.device.destroy_image(context.velocity_image_2);
     context.device.destroy_buffer(context.buffers.transforms_buffer.gpu_buffer);
     context.device.destroy_sampler(context.linear_sampler);
+    context.device.destroy_sampler(context.nearest_sampler);
     if(context.device.is_id_valid(context.buffers.scene_vertices.gpu_buffer))
     {
         context.device.destroy_buffer(context.buffers.scene_vertices.gpu_buffer);

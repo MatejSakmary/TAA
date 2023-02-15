@@ -17,7 +17,11 @@ void main()
     f32mat4x4 m_curr_proj_view_model = deref(camera_transforms).m_proj_view * daxa_push_constant.m_model;
     f32mat4x4 m_prev_proj_view_model = deref(camera_transforms).m_prev_proj_view * daxa_push_constant.m_model;
 
+#if defined(JITTER_CAMERA)
     gl_Position = deref(camera_transforms).m_jitter * m_curr_proj_view_model * pre_trans_pos;
+#else
+    gl_Position = m_curr_proj_view_model * pre_trans_pos;
+#endif
 
     normal_out = deref(scene_vertices[gl_VertexIndex + daxa_push_constant.index_offset]).normal;
     curr_pos = m_curr_proj_view_model * pre_trans_pos;

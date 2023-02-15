@@ -55,12 +55,13 @@ struct TonemapPC
 struct TAAPC
 {
     daxa_BufferPtr(TransformData) transforms;
-    daxa_RWImage2Df32 depth_image;
+    daxa_Image2Df32 depth_image;
     daxa_RWImage2Df32 offscreen_image;
     daxa_RWImage2Df32 offscreen_copy_image;
     daxa_RWImage2Df32 velocity_image;
     daxa_RWImage2Df32 prev_velocity_image;
     daxa_RWImage2Df32 accumulation_image;
+    daxa_SamplerId nearest_sampler;
     daxa_u32vec2 swapchain_dimensions;
     daxa_u32 first_frame;
 };

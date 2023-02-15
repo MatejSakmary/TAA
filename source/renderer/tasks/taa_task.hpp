@@ -8,8 +8,17 @@
 
 inline auto get_taa_pass_pipeline(const RendererContext & context) -> daxa::ComputePipelineCompileInfo 
 {
+    daxa::ShaderCompileOptions compile_options;
+    if(context.conditionals.color_clamp) { compile_options.defines.push_back({"COLOR_CLAMP", ""}); }
+    if(context.conditionals.velocity_rejection) { compile_options.defines.push_back({"REJECT_VELOCITY", ""}); }
+    if(context.conditionals.velocity_reproject) { compile_options.defines.push_back({"REPROJECT_VELOCITY", ""}); }
+    if(context.conditionals.nearest_depth) { compile_options.defines.push_back({"NEAREST_DEPTH", ""}); }
+    if(context.conditionals.accumulate) { compile_options.defines.push_back({"ACCUMULATE", ""}); }
     return {
-        .shader_info = { .source = daxa::ShaderFile{"taa.glsl"}},
+        .shader_info = { 
+            .source = daxa::ShaderFile{"taa.glsl"},
+            .compile_options = compile_options
+        },
         .push_constant_size = sizeof(TAAPC),
         .debug_name = "taa pass pipeline"
     };
@@ -80,6 +89,7 @@ inline void task_taa_pass(RendererContext & context)
                 .velocity_image       = velocity_image[0].default_view(),
                 .prev_velocity_image  = prev_velocity_image[0].default_view(),
                 .accumulation_image   = accumulation_image[0].default_view(),
+                .nearest_sampler      = context.nearest_sampler,
                 .swapchain_dimensions = {dimensions.x, dimensions.y},
                 .first_frame = context.conditionals.clear_accumulation ? 1u : 0u
             });

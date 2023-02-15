@@ -75,6 +75,14 @@ struct RendererContext
         bool fill_transforms = true;
         bool fill_scene_geometry = false;
         bool clear_accumulation = true;
+
+        bool jitter_camera = true;
+
+        bool color_clamp = true;
+        bool velocity_rejection = true;
+        bool velocity_reproject = true;
+        bool nearest_depth = true;
+        bool accumulate = true;
     };
 
     // TODO(msakmary) perhaps reconsider moving this to Scene?
@@ -109,6 +117,7 @@ struct RendererContext
     daxa::ImageId depth_image;
 
     daxa::SamplerId linear_sampler;
+    daxa::SamplerId nearest_sampler;
 
     daxa::Format offscreen_format;
     daxa::Format velocity_format;

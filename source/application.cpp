@@ -104,6 +104,22 @@ void Application::ui_update()
     ImGui::SameLine();
     ImGui::Text("%s", glm::to_string(camera.get_camera_position()).c_str());
     if (ImGui::Button("Reload Scene", {100, 20})) { state.file_browser.Open(); }
+
+    ImGui::Checkbox("Jitter camera", &state.current.jitter_camera);
+
+    ImGui::Checkbox("Accumulate", &state.current.accumulate);
+
+    if(!state.current.accumulate) { ImGui::BeginDisabled(); }
+    ImGui::Checkbox("Color clamp", &state.current.color_clamp);
+    ImGui::Checkbox("Nearest depth", &state.current.nearest_depth);
+    ImGui::Checkbox("Reproject velocity", &state.current.reproject_velocity);
+    if(!state.current.accumulate) { ImGui::EndDisabled(); }
+
+    if(!state.current.reproject_velocity) {ImGui::BeginDisabled(); }
+    ImGui::Checkbox("Reject velocity", &state.current.reject_velocity);
+    if(!state.current.reproject_velocity) {ImGui::EndDisabled(); }
+
+
     ImGui::End();
 
     state.file_browser.Display();
@@ -170,6 +186,45 @@ void Application::update_app_state()
         if(state.key_table.bits.CTRL)   { camera.move_camera(state.delta_time, Direction::DOWN);       }
         if(state.key_table.bits.SPACE)  { camera.move_camera(state.delta_time, Direction::UP);         }
     }
+
+    bool changed = false;
+    if(state.last_frame.accumulate != state.current.accumulate)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::ACCUMULATE, state.current.accumulate);
+        state.current.color_clamp = false;
+        state.current.nearest_depth = false;
+        state.current.reject_velocity = false;
+        state.current.reproject_velocity = false;
+    }
+    if(state.last_frame.color_clamp != state.current.color_clamp)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::COLOR_CLAMP, state.current.color_clamp);
+    }
+    if(state.last_frame.jitter_camera != state.current.jitter_camera)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::JITTER, state.current.jitter_camera);
+    }
+    if(state.last_frame.nearest_depth != state.current.nearest_depth)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::NEAREST_DEPTH, state.current.nearest_depth);
+    }
+    if(state.last_frame.reproject_velocity != state.current.reproject_velocity)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::REPROJECT_VELOCITY, state.current.reproject_velocity);
+        state.current.reject_velocity = false;
+    }
+    if(state.last_frame.reject_velocity != state.current.reject_velocity)
+    {
+        changed = true;
+        renderer.change_shader_define(Define::REJECT_VELOCITY, state.current.reject_velocity);
+    }
+    if(changed) { renderer.reload_taa_pipeline(); }
+    state.last_frame = state.current;
 }
 
 void Application::main_loop()
@@ -177,8 +232,8 @@ void Application::main_loop()
     while (!window.get_window_should_close())
     {
         glfwPollEvents();
-        update_app_state();
         ui_update();
+        update_app_state();
 
         if (state.minimized != 0u) { DEBUG_OUT("[Application::main_loop()] Window minimized "); continue; } 
         renderer.draw(camera);
