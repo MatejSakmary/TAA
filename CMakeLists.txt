@@ -34,3 +34,34 @@ set(DAXA_INCLUDE_DIR "$<TARGET_FILE_DIR:TAA>/../../vcpkg_installed/x64-$<LOWER_C
 target_compile_definitions(${PROJECT_NAME} PRIVATE DAXA_SHADER_INCLUDE_DIR="${DAXA_INCLUDE_DIR}")
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+
+set(PACKAGE_APP true)
+
+if(PACKAGE_APP)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        list(APPEND RUNTIME_ARTIFACT_TARGETS glfw assimp::assimp)
+    endif()
+
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+    install(IMPORTED_RUNTIME_ARTIFACTS ${RUNTIME_ARTIFACT_TARGETS})
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/source/renderer/shaders" DESTINATION bin)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/source/renderer/shared" DESTINATION bin/shared)
+    install(FILES "${DAXA_INCLUDE_DIR}/daxa/daxa.inl" "${DAXA_INCLUDE_DIR}/daxa/daxa.glsl" "${DAXA_INCLUDE_DIR}/daxa/daxa.hlsl" DESTINATION bin/shaders/daxa)
+    install(FILES "${CMAKE_SOURCE_DIR}/imgui.ini" DESTINATION bin)
+
+    set(CPACK_PACKAGE_NAME "TAA app")
+    set(CPACK_PACKAGE_VENDOR "Matej-Sakmary")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "TAA")
+    set(CPACK_PACKAGE_DESCRIPTION "TAA")
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        set(CPACK_PACKAGE_EXECUTABLES ${PROJECT_NAME} "TAA app")
+
+        # Set the default installation directory. In this case it becomes C:/Program Files/GabeVoxelGame
+        set(CPACK_PACKAGE_INSTALL_DIRECTORY "TAA app")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    endif()
+
+    include(InstallRequiredSystemLibraries)
+    include(CPack)
+endif()

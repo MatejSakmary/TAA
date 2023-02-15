@@ -5,7 +5,6 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
-#define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_NATIVE_INCLUDE_NONE
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
@@ -15,8 +14,6 @@
 #include <daxa/daxa.hpp>
 
 #include "types.hpp"
-
-
 struct WindowVTable
 {
     std::function<void(f64, f64)> mouse_pos_callback;

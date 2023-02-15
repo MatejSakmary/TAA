@@ -21,8 +21,11 @@ Renderer::Renderer(const AppWindow & window) :
         .shader_compile_options = {
             .root_paths = {
                 DAXA_SHADER_INCLUDE_DIR,
-                "source/renderer",
-                "source/renderer/shaders",},
+                "source/rendering_backend",
+                "source/rendering_backend/shaders",
+                "shaders",
+                "shared"
+            },
             .language = daxa::ShaderLanguage::GLSL,
             .enable_debug_info = true
         },

@@ -137,7 +137,7 @@ void Application::ui_update()
 }
 
 Application::Application() : 
-    window({1080, 720},
+    window({1920, 1020},
     WindowVTable {
         .mouse_pos_callback = [this](const f64 x, const f64 y)
             {this->mouse_callback(x, y);},
@@ -157,7 +157,7 @@ Application::Application() :
         .position = {0.0, 0.0, 5.0},
         .front = {0.0, 0.0, -1.0},
         .up = {0.0, 1.0, 0.0}, 
-        .aspect_ratio = 1080.0f/720.0f,
+        .aspect_ratio = 1920.0f/1080.0f,
         .fov = glm::radians(30.0f)
     }},
     scene{"resources/suzanne_scene/suzanne.fbx"}
